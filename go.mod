@@ -1,4 +1,5 @@
-module 	github.com/yakmoose/envop
+module github.com/yakmoose/envop
+
 
 go 1.20
 
