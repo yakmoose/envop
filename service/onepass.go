@@ -31,3 +31,12 @@ func Create1PasswordItem(client connect.Client, vaultName, itemName string, envi
 
 	return client.CreateItem(item, vault.ID)
 }
+
+func Get1PasswordItem(client connect.Client, vaultName, itemName string) (*onepassword.Item, error) {
+	vault, err := client.GetVault(vaultName)
+	if err != nil {
+		return nil, err
+	}
+
+	return client.GetItem(itemName, vault.ID)
+}

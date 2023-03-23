@@ -48,7 +48,7 @@ var importCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		fmt.Printf("item created: %s (%s)", item.Title, item.ID)
+		fmt.Printf("item created: %s (%s)\n", item.Title, item.ID)
 
 		return nil
 	},
