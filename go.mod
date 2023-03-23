@@ -1,5 +1,6 @@
 module github.com/yakmoose/envop
 
+
 go 1.20
 
 require (

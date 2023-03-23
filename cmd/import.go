@@ -6,7 +6,7 @@ package cmd
 import (
 	"fmt"
 
-	"envop/service"
+	"github.com/yakmoose/envop/service"
 
 	"github.com/1Password/connect-sdk-go/connect"
 	"github.com/spf13/cobra"
