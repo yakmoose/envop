@@ -1,3 +1,7 @@
+/*
+Copyright © 2023 John Lennard <john@yakmoo.se>
+*/
+
 package service
 
 import (
@@ -8,6 +12,7 @@ import (
 	"github.com/subosito/gotenv"
 )
 
+// parseFile wrapper around the file parser
 func parseFile(file string, env *map[string]string) error {
 	fh, err := os.Open(file)
 	if err != nil {
@@ -20,6 +25,7 @@ func parseFile(file string, env *map[string]string) error {
 	return nil
 }
 
+// ReadEnv reads the environment file in .env format in the order .env.local, .env, .env.<environment>, .env.<environment>.local
 func ReadEnv(environment, path string) map[string]string {
 	// read the .environment file
 	// .environment.local .environment .environment.<environment> .environment.<environment>.local
@@ -38,6 +44,7 @@ func ReadEnv(environment, path string) map[string]string {
 	return env
 }
 
+// WriteEnv writes the environment file in .env format
 func WriteEnv(environment, path string, env map[string]string) error {
 	fh, err := os.Create(path + "." + environment + ".local")
 	if err != nil {
@@ -52,6 +59,7 @@ func WriteEnv(environment, path string, env map[string]string) error {
 	return nil
 }
 
+// WriteJSON writes the environment file in JSON format
 func WriteJSON(environment, path string, env map[string]string) error {
 	fh, err := os.Create(path + "." + environment + ".local.json")
 	if err != nil {

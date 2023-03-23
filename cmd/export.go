@@ -1,3 +1,6 @@
+/*
+Copyright © 2023 John Lennard <john@yakmoo.se>
+*/
 package cmd
 
 import (
@@ -7,7 +10,7 @@ import (
 	"strings"
 )
 
-// importCmd represents the import command
+// importCmd represents the export command
 var exportCmd = &cobra.Command{
 	Use:   "export",
 	Short: "Export the specified 1password item into an environment file",

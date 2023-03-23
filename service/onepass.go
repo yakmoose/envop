@@ -1,3 +1,6 @@
+/*
+Copyright © 2023 John Lennard <john@yakmoo.se>
+*/
 package service
 
 import (
@@ -5,6 +8,7 @@ import (
 	"github.com/1Password/connect-sdk-go/onepassword"
 )
 
+// Create1PasswordItem creates a new 1password item in the specified vault, from the provided environment
 func Create1PasswordItem(client connect.Client, vaultName, itemName string, environment map[string]string) (*onepassword.Item, error) {
 	vault, err := client.GetVault(vaultName)
 	if err != nil {
@@ -32,6 +36,7 @@ func Create1PasswordItem(client connect.Client, vaultName, itemName string, envi
 	return client.CreateItem(item, vault.ID)
 }
 
+// Get1PasswordItem retrieves a 1password item from the specified vault
 func Get1PasswordItem(client connect.Client, vaultName, itemName string) (*onepassword.Item, error) {
 	vault, err := client.GetVault(vaultName)
 	if err != nil {

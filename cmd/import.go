@@ -1,3 +1,6 @@
+/*
+Copyright © 2023 John Lennard <john@yakmoo.se>
+*/
 package cmd
 
 import (
