@@ -4,9 +4,9 @@ Copyright © 2023 John Lennard <john@yakmoo.se>
 package cmd
 
 import (
-	"envop/service"
 	"github.com/1Password/connect-sdk-go/connect"
 	"github.com/spf13/cobra"
+	"github.com/yakmoose/envop/service"
 	"strings"
 )
 
