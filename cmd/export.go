@@ -1,26 +1,22 @@
 /*
-Copyright © 2023 John Lennard <john@yakmoo.se>
+Copyright © 2025 John Lennard <john@yakmoo.se>
 */
 package cmd
 
 import (
-	"github.com/1Password/connect-sdk-go/connect"
+	"context"
+	"github.com/1password/onepassword-sdk-go"
 	"github.com/spf13/cobra"
 	"github.com/yakmoose/envop/service"
 	"strings"
 )
 
-// importCmd represents the export command
+// exportCmd represents the export command
 var exportCmd = &cobra.Command{
 	Use:   "export",
 	Short: "Export the specified 1password item into an environment file",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		path, err := cmd.Flags().GetString("path")
-		if err != nil {
-			return err
-		}
-
-		environment, err := cmd.Flags().GetString("env")
+		envFile, err := cmd.Flags().GetString("env-file")
 		if err != nil {
 			return err
 		}
@@ -35,7 +31,16 @@ var exportCmd = &cobra.Command{
 			return err
 		}
 
-		client, err := connect.NewClientFromEnvironment()
+		token, err := cmd.Flags().GetString("service-account")
+		if err != nil {
+			return err
+		}
+
+		client, err := onepassword.NewClient(
+			context.Background(),
+			onepassword.WithServiceAccountToken(token),
+			onepassword.WithIntegrationInfo("envop", "v0.0.0"),
+		)
 		if err != nil {
 			return err
 		}
@@ -47,7 +52,7 @@ var exportCmd = &cobra.Command{
 
 		fields := make(map[string]string, 0)
 		for _, v := range item.Fields {
-			fields[strings.ToUpper(v.Label)] = v.Value
+			fields[strings.ToUpper(v.Title)] = v.Value
 		}
 
 		format, err := cmd.Flags().GetString("format")
@@ -57,9 +62,9 @@ var exportCmd = &cobra.Command{
 
 		switch format {
 		case "json":
-			service.WriteJSON(environment, path, fields)
+			service.WriteJSON(envFile, fields)
 		case "env":
-			service.WriteEnv(environment, path, fields)
+			service.WriteEnv(envFile, fields)
 		}
 
 		return nil
@@ -68,15 +73,14 @@ var exportCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(exportCmd)
-	exportCmd.Flags().String("path", ".env", "The env file base")
-	exportCmd.Flags().String("env", "dev", "The env environment")
+	exportCmd.Flags().String("env-file", "", "The file to save to")
 
-	exportCmd.Flags().StringP("vault", "V", "", "The 1password vault")
+	exportCmd.Flags().String("vault", "", "The 1password vault")
 	exportCmd.MarkFlagRequired("vault")
 
-	exportCmd.Flags().StringP("item", "i", "", "The name of the item to save")
+	exportCmd.Flags().String("item", "", "The name of the item to save")
 	exportCmd.MarkFlagRequired("item")
 
-	exportCmd.Flags().String("format", "env", "The name of the item to save")
+	exportCmd.Flags().String("format", "env", "The file format to save as (env, json)")
 
 }
