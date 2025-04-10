@@ -1,5 +1,5 @@
 /*
-Copyright © 2023 John Lennard <john@yakmoo.se>
+Copyright © 2025 John Lennard <john@yakmoo.se>
 */
 package main
 

@@ -1,15 +1,14 @@
 /*
-Copyright © 2023 John Lennard <john@yakmoo.se>
+Copyright © 2025 John Lennard <john@yakmoo.se>
 */
 package cmd
 
 import (
+	"context"
 	"fmt"
-
-	"github.com/yakmoose/envop/service"
-
-	"github.com/1Password/connect-sdk-go/connect"
+	"github.com/1password/onepassword-sdk-go"
 	"github.com/spf13/cobra"
+	"github.com/yakmoose/envop/service"
 )
 
 // importCmd represents the import command
@@ -17,12 +16,12 @@ var importCmd = &cobra.Command{
 	Use:   "import",
 	Short: "Import the specified file into 1password",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		path, err := cmd.Flags().GetString("path")
+		envFile, err := cmd.Flags().GetString("env-file")
 		if err != nil {
 			return err
 		}
 
-		environment, err := cmd.Flags().GetString("env")
+		envName, err := cmd.Flags().GetString("env-name")
 		if err != nil {
 			return err
 		}
@@ -37,34 +36,60 @@ var importCmd = &cobra.Command{
 			return err
 		}
 
-		client, err := connect.NewClientFromEnvironment()
+		sectionName, err := cmd.Flags().GetString("section")
 		if err != nil {
 			return err
 		}
 
-		item, err := service.Create1PasswordItem(
-			client,
-			vaultName,
-			itemName,
-			service.ReadEnv(environment, path),
+		token, err := cmd.Flags().GetString("service-account")
+		if err != nil {
+			return err
+		}
+
+		client, err := onepassword.NewClient(
+			context.Background(),
+			onepassword.WithServiceAccountToken(token),
+			onepassword.WithIntegrationInfo("envop", "v0.0.0"),
 		)
 		if err != nil {
 			return err
 		}
-		fmt.Printf("item created: %s (%s)\n", item.Title, item.ID)
 
+		environment, err := service.ReadEnv(envName, envFile)
+		if err != nil {
+			return err
+		}
+
+		if len(environment) > 0 {
+			item, err := service.Create1PasswordItem(
+				client,
+				vaultName,
+				itemName,
+				sectionName,
+				environment,
+			)
+			if err != nil {
+				return err
+			}
+			fmt.Printf("item created: %s (%s)\n", item.Title, item.ID)
+		} else {
+			return fmt.Errorf("no items found for environment: %s", envName)
+		}
 		return nil
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(importCmd)
-	importCmd.Flags().String("path", ".env", "The env file base")
-	importCmd.Flags().String("env", "dev", "The env environment")
+	importCmd.Flags().String("env-file", "", "The env file base")
+	importCmd.Flags().String("env-name", "", "The environment, will try <path>, <path>.local, <path>.<env> and <path>.<env>.local")
 
-	importCmd.Flags().StringP("vault", "V", "", "The 1password vault")
+	importCmd.Flags().String("vault", "", "The 1password vault")
 	importCmd.MarkFlagRequired("vault")
 
-	importCmd.Flags().String("item", "i", "The name of the item to save")
+	importCmd.Flags().String("section", "", "The 1password section to add fields to")
+	importCmd.MarkFlagRequired("section")
+
+	importCmd.Flags().String("item", "", "The name of the item to save")
 	importCmd.MarkFlagRequired("item")
 }

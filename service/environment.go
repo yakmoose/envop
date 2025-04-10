@@ -1,56 +1,85 @@
 /*
-Copyright © 2023 John Lennard <john@yakmoo.se>
+Copyright © 2025 John Lennard <john@yakmoo.se>
 */
 
 package service
 
 import (
 	"encoding/json"
+	"github.com/hashicorp/go-envparse"
 	"os"
 	"strconv"
-
-	"github.com/subosito/gotenv"
 )
 
 // parseFile wrapper around the file parser
-func parseFile(file string, env *map[string]string) error {
-	fh, err := os.Open(file)
-	if err != nil {
-		return err
+func parseFile(path string, env *map[string]string) error {
+	var fh *os.File
+	var err error
+	if path == "" {
+		fh = os.Stdin
+	} else {
+		fh, err = os.Open(path)
+		if err != nil {
+			return nil
+		}
+		defer fh.Close()
 	}
-	defer fh.Close()
-	for k, v := range gotenv.Parse(fh) {
+
+	parsedEnvfile, err := envparse.Parse(fh)
+	if err != nil {
+	}
+
+	for k, v := range parsedEnvfile {
 		(*env)[k] = v
 	}
 	return nil
 }
 
 // ReadEnv reads the environment file in .env format in the order .env.local, .env, .env.<environment>, .env.<environment>.local
-func ReadEnv(environment, path string) map[string]string {
-	// read the .environment file
-	// .environment.local .environment .environment.<environment> .environment.<environment>.local
-	// create 1password items and store em
-	fileNames := []string{
-		path + ".local",
-		path,
-		path + "." + environment,
-		path + "." + environment + ".local",
-	}
+func ReadEnv(envName, path string) (map[string]string, error) {
+	// read the .environmentName file
+	// .env.local .env .env.<environmentName> .env.<environmentName>.local
 
+	var fileNames []string
+	if path == "" {
+		fileNames = []string{""}
+	} else {
+		fileNames = []string{
+			path,
+			path + ".local",
+		}
+
+		if envName != "" {
+			fileNames = append(
+				fileNames, path+"."+envName,
+				path+"."+envName+".local",
+			)
+		}
+	}
 	env := make(map[string]string, 0)
 	for _, fileName := range fileNames {
-		parseFile(fileName, &env)
+		err := parseFile(fileName, &env)
+		if err != nil {
+			return nil, err
+		}
 	}
-	return env
+	return env, nil
 }
 
 // WriteEnv writes the environment file in .env format
-func WriteEnv(environment, path string, env map[string]string) error {
-	fh, err := os.Create(path + "." + environment + ".local")
-	if err != nil {
-		return err
+func WriteEnv(fileName string, env map[string]string) error {
+	var fh *os.File
+	var err error
+
+	if fileName == "" {
+		fh = os.Stdout
+	} else {
+		fh, err = os.Create(fileName)
+		if err != nil {
+			return err
+		}
+		defer fh.Close()
 	}
-	defer fh.Close()
 
 	for k, v := range env {
 		fh.WriteString(k + "=" + strconv.Quote(v) + "\n")
@@ -60,12 +89,19 @@ func WriteEnv(environment, path string, env map[string]string) error {
 }
 
 // WriteJSON writes the environment file in JSON format
-func WriteJSON(environment, path string, env map[string]string) error {
-	fh, err := os.Create(path + "." + environment + ".local.json")
-	if err != nil {
-		return err
+func WriteJSON(fileName string, env map[string]string) error {
+	var fh *os.File
+	var err error
+
+	if fileName == "" {
+		fh = os.Stdout
+	} else {
+		fh, err = os.Create(fileName)
+		if err != nil {
+			return err
+		}
+		defer fh.Close()
 	}
-	defer fh.Close()
 
 	out, err := json.Marshal(env)
 	if err != nil {

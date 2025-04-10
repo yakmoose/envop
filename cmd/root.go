@@ -1,11 +1,12 @@
 /*
-Copyright © 2023 John Lennard <john@yakmoo.se>
+Copyright © 2025 John Lennard <john@yakmoo.se>
 */
 package cmd
 
 import (
-	"fmt"
+	"github.com/spf13/pflag"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -31,15 +32,12 @@ func Execute() {
 func init() {
 	cobra.OnInitialize(initConfig)
 
-	// Here you will define your flags and configuration settings.
-	// Cobra supports persistent flags, which, if defined here,
-	// will be global for your application.
+	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.envop.json)")
+	rootCmd.PersistentFlags().StringP("service-account", "", "", "1password service account")
+	rootCmd.MarkPersistentFlagRequired("service-account")
 
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.envop.yaml)")
+	viper.BindPFlag("service-account", rootCmd.PersistentFlags().Lookup("service-account"))
 
-	// Cobra also supports local flags, which will only run
-	// when this action is called directly.
-	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
 
 // initConfig reads in config file and ENV variables if set.
@@ -52,16 +50,25 @@ func initConfig() {
 		home, err := os.UserHomeDir()
 		cobra.CheckErr(err)
 
-		// Search config in home directory with name ".envop" (without extension).
 		viper.AddConfigPath(home)
-		viper.SetConfigType("yaml")
-		viper.SetConfigName(".envop")
+		viper.SetConfigType("json")
+		viper.SetConfigName(".envop.json")
 	}
 
-	viper.AutomaticEnv() // read in environment variables that match
+	viper.SetEnvKeyReplacer(strings.NewReplacer("SERVICE-ACCOUNT", "OP_SERVICE_ACCOUNT_TOKEN"))
+	viper.AutomaticEnv()
 
-	// If a config file is found, read it in.
-	if err := viper.ReadInConfig(); err == nil {
-		fmt.Fprintln(os.Stderr, "Using config file:", viper.ConfigFileUsed())
+	if err := viper.ReadInConfig(); err != nil {
+		// panic(err)
 	}
+
+	rootCmd.PersistentFlags().VisitAll(func(f *pflag.Flag) {
+		// Determine the naming convention of the flags when represented in the config file
+		configName := f.Name
+
+		// Apply the viper config value to the flag when the flag is not set and viper has a value
+		if !f.Changed && viper.IsSet(configName) {
+			rootCmd.PersistentFlags().Set(f.Name, viper.GetString(configName))
+		}
+	})
 }
