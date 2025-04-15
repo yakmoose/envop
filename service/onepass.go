@@ -23,6 +23,11 @@ func Create1PasswordItem(
 		return nil, err
 	}
 
+	section := onepassword.ItemSection{
+		ID:    sectionName,
+		Title: sectionName,
+	}
+
 	fields := make([]onepassword.ItemField, 0)
 	for k, v := range environment {
 		field := onepassword.ItemField{
@@ -30,17 +35,14 @@ func Create1PasswordItem(
 			Title:     k,
 			Value:     v,
 			FieldType: onepassword.ItemFieldTypeConcealed,
+			SectionID: &sectionName,
 		}
 		fields = append(fields, field)
 	}
 
 	itemParams := onepassword.ItemCreateParams{
-		Title: itemName,
-		Sections: []onepassword.ItemSection{
-			{
-				Title: sectionName,
-			},
-		},
+		Title:    itemName,
+		Sections: append([]onepassword.ItemSection{}, section),
 		Fields:   fields,
 		VaultID:  vault.ID,
 		Category: onepassword.ItemCategoryServer,
