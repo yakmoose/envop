@@ -4,9 +4,7 @@ Copyright © 2025 John Lennard <john@yakmoo.se>
 package cmd
 
 import (
-	"context"
 	"fmt"
-	"github.com/1password/onepassword-sdk-go"
 	"github.com/spf13/cobra"
 	"github.com/yakmoose/envop/service"
 )
@@ -46,11 +44,7 @@ var importCmd = &cobra.Command{
 			return err
 		}
 
-		client, err := onepassword.NewClient(
-			context.Background(),
-			onepassword.WithServiceAccountToken(token),
-			onepassword.WithIntegrationInfo("envop", "v0.0.0"),
-		)
+		client, err := service.NewClientFromToken(token)
 		if err != nil {
 			return err
 		}
