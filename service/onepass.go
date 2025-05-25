@@ -108,3 +108,11 @@ func Get1PasswordItem(client *onepassword.Client, vaultName string, itemName str
 	}
 	return nil, fmt.Errorf("item %s not found", itemName)
 }
+
+func NewClientFromToken(token string) (*onepassword.Client, error) {
+	return onepassword.NewClient(
+		context.Background(),
+		onepassword.WithServiceAccountToken(token),
+		onepassword.WithIntegrationInfo("envop", "v0.0.0"),
+	)
+}
