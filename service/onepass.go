@@ -5,7 +5,6 @@ package service
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"github.com/1password/onepassword-sdk-go"
 )
@@ -56,20 +55,14 @@ func Create1PasswordItem(
 
 // Get1PasswordVault retrieves a 1password vault by name
 func Get1PasswordVault(client *onepassword.Client, vaultName string) (*onepassword.VaultOverview, error) {
-	vaults, err := client.Vaults().ListAll(context.Background())
+	vaults, err := client.Vaults().List(context.Background())
 	if err != nil {
 		return nil, err
 	}
 
-	for {
-		vault, err := vaults.Next()
-		if errors.Is(err, onepassword.ErrorIteratorDone) {
-			break
-		} else if err != nil {
-			panic(err)
-		}
-		if vault.Title == vaultName {
-			return vault, nil
+	for i := range vaults {
+		if vaults[i].Title == vaultName {
+			return &vaults[i], nil
 		}
 	}
 
@@ -84,26 +77,17 @@ func Get1PasswordItem(client *onepassword.Client, vaultName string, itemName str
 		return nil, err
 	}
 
-	items, err := client.Items().ListAll(context.Background(), vault.ID)
+	items, err := client.Items().List(context.Background(), vault.ID)
 	if err != nil {
 		return nil, err
 	}
-
-	for {
-		item, err := items.Next()
-		if errors.Is(err, onepassword.ErrorIteratorDone) {
-			break
-		} else if err != nil {
-			panic(err)
-		}
-		if item.Title == itemName {
-			item, err := client.Items().Get(context.Background(), vault.ID, item.ID)
+	for i := range items {
+		if items[i].Title == itemName {
+			item, err := client.Items().Get(context.Background(), vault.ID, items[i].ID)
 			if err != nil {
 				return nil, err
 			}
-
 			return &item, nil
-
 		}
 	}
 	return nil, fmt.Errorf("item %s not found", itemName)
