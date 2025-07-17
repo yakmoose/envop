@@ -39,7 +39,12 @@ var exportCmd = &cobra.Command{
 			return err
 		}
 
-		item, err := service.Get1PasswordItem(client, vaultName, itemName)
+		vault, err := service.FindVaultWithName(client, vaultName)
+		if err != nil {
+			return err
+		}
+
+		item, err := service.FindItemWithName(client, vault, itemName)
 		if err != nil {
 			return err
 		}

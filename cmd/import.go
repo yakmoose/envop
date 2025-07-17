@@ -4,6 +4,7 @@ Copyright © 2025 John Lennard <john@yakmoo.se>
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"github.com/spf13/cobra"
 	"github.com/yakmoose/envop/service"
@@ -55,17 +56,52 @@ var importCmd = &cobra.Command{
 		}
 
 		if len(environment) > 0 {
-			item, err := service.Create1PasswordItem(
-				client,
-				vaultName,
-				itemName,
-				sectionName,
-				environment,
-			)
+
+			vault, err := service.FindVaultWithName(client, vaultName)
+			if err != nil {
+				return err
+			}
+
+			item, err := service.FindItemWithName(client, vault, itemName)
+			if err != nil {
+				return err
+			}
+
+			replace, err := cmd.Flags().GetBool("replace")
+			if err != nil {
+				return err
+			}
+
+			if item != nil && replace {
+				err := client.Items().Delete(context.Background(), vault.ID, item.ID)
+				if err != nil {
+					return err
+				}
+				item = nil
+			}
+
+			if item == nil {
+				item, err = service.CreateItemInVaultWithSection(
+					client,
+					vault,
+					itemName,
+					sectionName,
+					environment,
+				)
+			} else {
+				item, err = service.UpdateItem(
+					client,
+					item,
+					sectionName,
+					environment,
+				)
+			}
+
 			if err != nil {
 				return err
 			}
 			fmt.Printf("item created: %s (%s)\n", item.Title, item.ID)
+
 		} else {
 			return fmt.Errorf("no items found for environment: %s", envName)
 		}
@@ -86,4 +122,6 @@ func init() {
 
 	importCmd.Flags().String("item", "", "The name of the item to save")
 	importCmd.MarkFlagRequired("item")
+
+	importCmd.Flags().Bool("replace", false, "Replace existing item instead of appending to it")
 }
