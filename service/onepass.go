@@ -7,34 +7,31 @@ import (
 	"context"
 	"fmt"
 	"github.com/1password/onepassword-sdk-go"
+	"github.com/google/uuid"
+	"strings"
 )
 
-// Create1PasswordItem creates a new 1password item in the specified vault, from the provided environment
-func Create1PasswordItem(
+// CreateItemInVaultWithSection creates a new 1password item in the specified vault, from the provided environment
+func CreateItemInVaultWithSection(
 	client *onepassword.Client,
-	vaultName,
+	vault *onepassword.VaultOverview,
 	itemName,
 	sectionName string,
 	environment map[string]string,
 ) (*onepassword.Item, error) {
-	vault, err := Get1PasswordVault(client, vaultName)
-	if err != nil {
-		return nil, err
-	}
-
 	section := onepassword.ItemSection{
-		ID:    sectionName,
+		ID:    uuid.New().String(),
 		Title: sectionName,
 	}
 
-	fields := make([]onepassword.ItemField, 0)
+	fields := make([]onepassword.ItemField, 0, len(environment))
 	for k, v := range environment {
 		field := onepassword.ItemField{
-			ID:        k,
-			Title:     k,
-			Value:     v,
+			ID:        uuid.New().String(),
+			Title:     strings.TrimSpace(k),
+			Value:     strings.TrimSpace(v),
 			FieldType: onepassword.ItemFieldTypeConcealed,
-			SectionID: &sectionName,
+			SectionID: &section.ID,
 		}
 		fields = append(fields, field)
 	}
@@ -46,6 +43,7 @@ func Create1PasswordItem(
 		VaultID:  vault.ID,
 		Category: onepassword.ItemCategoryServer,
 	}
+
 	item, err := client.Items().Create(context.Background(), itemParams)
 	if err != nil {
 		return nil, err
@@ -53,8 +51,97 @@ func Create1PasswordItem(
 	return &item, nil
 }
 
-// Get1PasswordVault retrieves a 1password vault by name
-func Get1PasswordVault(client *onepassword.Client, vaultName string) (*onepassword.VaultOverview, error) {
+func UpdateItem(
+	client *onepassword.Client,
+	item *onepassword.Item,
+	sectionName string,
+	environment map[string]string,
+) (*onepassword.Item, error) {
+
+	// does the section exist?
+	var section = onepassword.ItemSection{}
+	for _, v := range item.Sections {
+		if v.Title == sectionName {
+			section = v
+		}
+	}
+
+	// if not, make it
+	if section.ID == "" {
+		section = onepassword.ItemSection{
+			ID:    uuid.New().String(),
+			Title: sectionName,
+		}
+		item.Sections = append(item.Sections, section)
+	}
+
+	l := max(len(environment), len(item.Fields))
+
+	fieldMap := make(map[string]onepassword.ItemField, l)
+	fields := make([]onepassword.ItemField, 0, l)
+
+	// filter out the items that are in our section, vs not
+	for _, field := range item.Fields {
+		if *field.SectionID == section.ID {
+			fieldMap[strings.TrimSpace(field.Title)] = field
+		} else {
+			fields = append(fields, field)
+		}
+	}
+
+	for k, v := range environment {
+		fieldMap[k] = onepassword.ItemField{
+			ID:        uuid.New().String(),
+			Title:     strings.TrimSpace(k),
+			Value:     strings.TrimSpace(v),
+			FieldType: onepassword.ItemFieldTypeConcealed,
+			SectionID: &section.ID,
+		}
+	}
+
+	for _, v := range fieldMap {
+		fields = append(fields, v)
+	}
+
+	item.Fields = fields
+
+	updatedItem, err := client.Items().Put(context.Background(), *item)
+	if err != nil {
+		return nil, err
+	}
+	return &updatedItem, nil
+}
+
+func ReindexItem(client *onepassword.Client, item *onepassword.Item) (*onepassword.Item, error) {
+	sectionMap := make(map[string]onepassword.ItemSection, len(item.Sections))
+	for _, section := range item.Sections {
+		oldId := section.ID
+		section.ID = uuid.New().String()
+		sectionMap[oldId] = section
+	}
+
+	item.Sections = make([]onepassword.ItemSection, 0, len(sectionMap))
+	for _, section := range sectionMap {
+		item.Sections = append(item.Sections, section)
+	}
+
+	for i, field := range item.Fields {
+		field.ID = uuid.New().String()
+		newSectionId := sectionMap[*field.SectionID].ID
+		field.SectionID = &newSectionId
+		item.Fields[i] = field
+	}
+
+	updatedItem, err := client.Items().Put(context.Background(), *item)
+	if err != nil {
+		return nil, err
+	}
+
+	return &updatedItem, nil
+}
+
+// FindVaultWithName retrieves a 1password vault by name
+func FindVaultWithName(client *onepassword.Client, vaultName string) (*onepassword.VaultOverview, error) {
 	vaults, err := client.Vaults().List(context.Background())
 	if err != nil {
 		return nil, err
@@ -69,18 +156,14 @@ func Get1PasswordVault(client *onepassword.Client, vaultName string) (*onepasswo
 	return nil, fmt.Errorf("vault %s not found", vaultName)
 }
 
-// Get1PasswordItem retrieves a 1password item from the specified vault by name
-func Get1PasswordItem(client *onepassword.Client, vaultName string, itemName string) (*onepassword.Item, error) {
-
-	vault, err := Get1PasswordVault(client, vaultName)
-	if err != nil {
-		return nil, err
-	}
+// FindItemWithName retrieves a 1password item from the specified vault by name
+func FindItemWithName(client *onepassword.Client, vault *onepassword.VaultOverview, itemName string) (*onepassword.Item, error) {
 
 	items, err := client.Items().List(context.Background(), vault.ID)
 	if err != nil {
 		return nil, err
 	}
+
 	for i := range items {
 		if items[i].Title == itemName {
 			item, err := client.Items().Get(context.Background(), vault.ID, items[i].ID)
@@ -90,7 +173,7 @@ func Get1PasswordItem(client *onepassword.Client, vaultName string, itemName str
 			return &item, nil
 		}
 	}
-	return nil, fmt.Errorf("item %s not found", itemName)
+	return nil, nil
 }
 
 func NewClientFromToken(token string) (*onepassword.Client, error) {
