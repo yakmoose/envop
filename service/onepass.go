@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"github.com/1password/onepassword-sdk-go"
 	"github.com/google/uuid"
+	"slices"
 	"strings"
 )
 
@@ -131,6 +132,10 @@ func ReindexItem(client *onepassword.Client, item *onepassword.Item) (*onepasswo
 		field.SectionID = &newSectionId
 		item.Fields[i] = field
 	}
+
+	slices.SortFunc(item.Fields, func(a onepassword.ItemField, b onepassword.ItemField) int {
+		return strings.Compare(a.Title, b.Title)
+	})
 
 	updatedItem, err := client.Items().Put(context.Background(), *item)
 	if err != nil {
