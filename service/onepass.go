@@ -1,15 +1,13 @@
-/*
-Copyright © 2025 John Lennard <john@yakmoo.se>
-*/
 package service
 
 import (
 	"context"
 	"fmt"
-	"github.com/1password/onepassword-sdk-go"
-	"github.com/google/uuid"
 	"slices"
 	"strings"
+
+	"github.com/1password/onepassword-sdk-go"
+	"github.com/google/uuid"
 )
 
 // CreateItemInVaultWithSection creates a new 1password item in the specified vault, from the provided environment
@@ -36,6 +34,10 @@ func CreateItemInVaultWithSection(
 		}
 		fields = append(fields, field)
 	}
+
+	slices.SortFunc(fields, func(a onepassword.ItemField, b onepassword.ItemField) int {
+		return strings.Compare(a.Title, b.Title)
+	})
 
 	itemParams := onepassword.ItemCreateParams{
 		Title:    itemName,
@@ -103,6 +105,10 @@ func UpdateItem(
 	for _, v := range fieldMap {
 		fields = append(fields, v)
 	}
+
+	slices.SortFunc(fields, func(a onepassword.ItemField, b onepassword.ItemField) int {
+		return strings.Compare(a.Title, b.Title)
+	})
 
 	item.Fields = fields
 
