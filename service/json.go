@@ -36,7 +36,7 @@ func WriteJSON(fileName string, env map[string]any) error {
 	if err != nil {
 		return err
 	}
-	
+
 	_, err = fh.Write(out)
 	if err != nil {
 		return err
