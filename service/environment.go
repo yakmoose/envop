@@ -5,14 +5,14 @@ Copyright © 2025 John Lennard <john@yakmoo.se>
 package service
 
 import (
-	"encoding/json"
-	"github.com/hashicorp/go-envparse"
 	"os"
 	"strconv"
+
+	"github.com/hashicorp/go-envparse"
 )
 
 // parseFile wrapper around the file parser
-func parseFile(path string, env *map[string]string) error {
+func parseFile(path string, env *map[string]any) error {
 	var fh *os.File
 	var err error
 	if path == "" {
@@ -36,7 +36,7 @@ func parseFile(path string, env *map[string]string) error {
 }
 
 // ReadEnv reads the environment file in .env format in the order .env.local, .env, .env.<environment>, .env.<environment>.local
-func ReadEnv(envName, path string) (map[string]string, error) {
+func ReadEnv(envName, path string) (map[string]any, error) {
 	// read the .environmentName file
 	// .env.local .env .env.<environmentName> .env.<environmentName>.local
 
@@ -56,18 +56,19 @@ func ReadEnv(envName, path string) (map[string]string, error) {
 			)
 		}
 	}
-	env := make(map[string]string, 0)
+	env := make(map[string]any, 0)
 	for _, fileName := range fileNames {
 		err := parseFile(fileName, &env)
 		if err != nil {
 			return nil, err
 		}
 	}
+
 	return env, nil
 }
 
 // WriteEnv writes the environment file in .env format
-func WriteEnv(fileName string, env map[string]string) error {
+func WriteEnv(fileName string, env map[string]any) error {
 	var fh *os.File
 	var err error
 
@@ -82,32 +83,11 @@ func WriteEnv(fileName string, env map[string]string) error {
 	}
 
 	for k, v := range env {
-		fh.WriteString(k + "=" + strconv.Quote(v) + "\n")
-	}
-
-	return nil
-}
-
-// WriteJSON writes the environment file in JSON format
-func WriteJSON(fileName string, env map[string]string) error {
-	var fh *os.File
-	var err error
-
-	if fileName == "" {
-		fh = os.Stdout
-	} else {
-		fh, err = os.Create(fileName)
+		_, err = fh.WriteString(k + "=" + strconv.Quote(anyToStringish(v)) + "\n")
 		if err != nil {
 			return err
 		}
-		defer fh.Close()
 	}
-
-	out, err := json.Marshal(env)
-	if err != nil {
-		return err
-	}
-	fh.Write(out)
 
 	return nil
 }

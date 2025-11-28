@@ -6,7 +6,6 @@ package cmd
 import (
 	"github.com/spf13/cobra"
 	"github.com/yakmoose/envop/service"
-	"strings"
 )
 
 // exportCmd represents the export command
@@ -29,6 +28,11 @@ var exportCmd = &cobra.Command{
 			return err
 		}
 
+		sectionName, err := cmd.Flags().GetString("section")
+		if err != nil {
+			return err
+		}
+
 		token, err := cmd.Flags().GetString("service-account")
 		if err != nil {
 			return err
@@ -39,19 +43,15 @@ var exportCmd = &cobra.Command{
 			return err
 		}
 
-		vault, err := service.FindVaultWithName(client, vaultName)
+		env, err := service.ReadOnePassword(
+			client,
+			vaultName,
+			itemName,
+			sectionName,
+		)
+
 		if err != nil {
 			return err
-		}
-
-		item, err := service.FindItemWithName(client, vault, itemName)
-		if err != nil {
-			return err
-		}
-
-		fields := make(map[string]string, 0)
-		for _, v := range item.Fields {
-			fields[strings.ToUpper(v.Title)] = v.Value
 		}
 
 		format, err := cmd.Flags().GetString("format")
@@ -61,9 +61,11 @@ var exportCmd = &cobra.Command{
 
 		switch format {
 		case "json":
-			service.WriteJSON(envFile, fields)
+			err = service.WriteJSON(envFile, env)
 		case "env":
-			service.WriteEnv(envFile, fields)
+			err = service.WriteEnv(envFile, env)
+		case "tfvars", "hcl", "tfvar":
+			err = service.WriteHcl(envFile, env)
 		}
 
 		return nil
@@ -80,6 +82,8 @@ func init() {
 	exportCmd.Flags().String("item", "", "The name of the item to save")
 	exportCmd.MarkFlagRequired("item")
 
-	exportCmd.Flags().String("format", "env", "The file format to save as (env, json)")
+	exportCmd.Flags().String("section", "", "The section name")
+
+	exportCmd.Flags().String("format", "env", "The file format to save as (env, json, tfvars, hcl)")
 
 }

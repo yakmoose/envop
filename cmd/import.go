@@ -51,61 +51,78 @@ var importCmd = &cobra.Command{
 			return err
 		}
 
-		environment, err := service.ReadEnv(envName, envFile)
+		format, err := cmd.Flags().GetString("format")
 		if err != nil {
 			return err
 		}
 
-		if len(environment) > 0 {
+		var environment map[string]any
 
-			vault, err := service.FindVaultWithName(client, vaultName)
-			if err != nil {
-				return err
-			}
+		switch format {
+		case "env":
+			environment, err = service.ReadEnv(envName, envFile)
+		case "hcl", "tfvar", "tfvars":
+			environment, err = service.ReadHcl(envName, envFile)
+		case "json":
+			environment, err = service.ReadJson(envName, envFile)
+		}
 
-			item, err := service.FindItemWithName(client, vault, itemName)
-			if err != nil {
-				return err
-			}
+		if err != nil {
+			return err
+		}
 
-			replace, err := cmd.Flags().GetBool("replace")
-			if err != nil {
-				return err
-			}
-
-			if item != nil && replace {
-				err := client.Items().Delete(context.Background(), vault.ID, item.ID)
-				if err != nil {
-					return err
-				}
-				item = nil
-			}
-
-			if item == nil {
-				item, err = service.CreateItemInVaultWithSection(
-					client,
-					vault,
-					itemName,
-					sectionName,
-					&environment,
-				)
-			} else {
-				item, err = service.UpdateItem(
-					client,
-					item,
-					sectionName,
-					&environment,
-				)
-			}
-
-			if err != nil {
-				return err
-			}
-			fmt.Printf("item created: %s (%s)\n", item.Title, item.ID)
-
-		} else {
+		if len(environment) == 0 {
 			return fmt.Errorf("no items found for environment: %s", envName)
 		}
+
+		vault, err := service.FindVaultWithName(client, vaultName)
+		if err != nil {
+			return err
+		}
+
+		item, err := service.FindItemWithName(client, vault, itemName)
+		if err != nil {
+			return err
+		}
+
+		replace, err := cmd.Flags().GetBool("replace")
+		if err != nil {
+			return err
+		}
+
+		if item != nil && replace {
+			err := client.Items().Delete(context.Background(), vault.ID, item.ID)
+			if err != nil {
+				return err
+			}
+			item = nil
+		}
+
+		if item == nil {
+			item, err = service.CreateItem(
+				client,
+				vault,
+				itemName,
+				sectionName,
+			)
+			if err != nil {
+				return err
+			}
+		}
+
+		item, err = service.UpdateItem(
+			client,
+			item,
+			sectionName,
+			&environment,
+		)
+
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("item created: %s (%s)\n", item.Title, item.ID)
+
 		return nil
 	},
 }
@@ -123,6 +140,8 @@ func init() {
 
 	importCmd.Flags().String("item", "", "The name of the item to save")
 	importCmd.MarkFlagRequired("item")
+
+	importCmd.Flags().String("format", "env", "The input format, env, json or tfvars")
 
 	importCmd.Flags().Bool("replace", false, "Replace existing item instead of appending to it")
 }
