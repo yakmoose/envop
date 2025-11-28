@@ -98,7 +98,7 @@ func init() {
 
 	copyCmd.Flags().String("source-item", "", "The name of the item to copy from")
 	copyCmd.MarkFlagRequired("source-item")
-	
+
 	copyCmd.Flags().String("source-section", "", "The 1password section to copy from ")
 	copyCmd.MarkFlagRequired("source-section")
 
